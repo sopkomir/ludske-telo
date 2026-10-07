@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ľudské telo 3D</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -208,6 +210,7 @@ legend { font-weight: 700; padding: 0 6px; }
       <button id="turn" aria-label="Otočiť model o 90 stupňov"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></button>
       <button id="lbl" aria-pressed="true" aria-label="Popisy na modeli"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h10l6 6-6 6H4z"/></svg></button>
       <button id="flow" aria-pressed="false" aria-label="Ukázať proces v sústave"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg></button>
+      <button id="fs" aria-label="Na celú obrazovku" title="Na celú obrazovku"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path id="fsIcon" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       <button id="home" aria-label="Celé telo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11l9-7 9 7M6 10v10h12V10"/></svg></button>
     </div>
     <p class="hint" id="hint">Ťahaním otáčaj · ťukni na orgán</p>
@@ -1349,6 +1352,23 @@ $('#turn').onclick = turn;
 $('#home').onclick = () => { state.sel = null; setFocus(null); };
 $('#lbl').onclick = () => { state.labels = !state.labels; $('#lbl').setAttribute('aria-pressed', state.labels); const c = $('#o-lbl'); if (c) c.checked = state.labels; };
 $('#flow').onclick = toggleFlow;
+/* celá obrazovka – v iframe treba allowfullscreen; kde nejde (napr. iPhone), otvorí model v novej karte */
+(function () {
+  const b = $('#fs'), ic = $('#fsIcon');
+  const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+  const can = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  if (!can && !inFrame) { b.hidden = true; return; }
+  const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const sync = () => { const on = isFs(); b.setAttribute('aria-label', on ? 'Zavrieť celú obrazovku' : 'Na celú obrazovku'); b.title = b.getAttribute('aria-label'); ic.setAttribute('d', on ? 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5' : 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5'); setTimeout(resize, 120); };
+  document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
+  const openTab = () => { const w = window.open(location.href, '_blank', 'noopener'); if (!w) toast('Prehliadač nedovolil otvoriť novú kartu.'); };
+  b.onclick = () => {
+    if (isFs()) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
+    const el = document.documentElement, req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!can || !req) { openTab(); return; }
+    try { const r = req.call(el); if (r && r.catch) r.catch(() => inFrame ? openTab() : toast('Celú obrazovku sa nepodarilo zapnúť.')); } catch (e) { inFrame ? openTab() : toast('Celú obrazovku sa nepodarilo zapnúť.'); }
+  };
+})();
 
 /* ---------- slučka ---------- */
 let last = performance.now();
@@ -1383,5 +1403,5 @@ setTimeout(() => {
   try { buildBody(); } catch (e) { $('#loading').textContent = 'Model sa nepodarilo načítať. Skús obnoviť stránku.'; throw e; }
   applySettings(); applyVisibility(); renderLayers(); $('#loading').hidden = true; requestAnimationFrame(loop);
 }, 40);
-window.__app = { state, ORG, setFocus, selectOrgan, startQuiz, flyTo };
+window.__app = { state, ORG, setFocus, selectOrgan, startQuiz, flyTo, applyVisibility, resize, camera, controls };
 </script>
